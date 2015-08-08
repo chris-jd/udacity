@@ -203,6 +203,16 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Change-Log">Change Log<a class="anchor-link" href="#Change-Log">&#182;</a></h2><p><b>Revision 1:</b> Corrections to questions 1.1, 1.4 based on the comments of the first review.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Overview">Overview<a class="anchor-link" href="#Overview">&#182;</a></h2>
 </div>
 </div>
@@ -212,10 +222,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Dear Marker,</p>
-<p>These answers to the assignment questions have been prepared in a Jupyter (formally IPython) notebook. This was chosen to allow clarity of working, enable reproducability, and as it should be suitable and useful for the target audience, and can be converted to html easily. In general, the code necessary for each question is included below each question, although some blocks of necessary code fall inbetween questions. If there are any issues with the code blocks, let me know and I'll prepare a new html with them stripped out.</p>
-<p>Cheers,
-Chris</p>
+<p>These answers to the assignment questions have been prepared in a Jupyter (formally IPython) notebook. This was chosen to allow clarity of working, enable reproducability, and as it should be suitable and useful for the target audience, and can be converted to html easily. In general, the code necessary for each question is included below each question, although some blocks of necessary code fall inbetween questions.</p>
 
 </div>
 </div>
@@ -299,7 +306,10 @@ Chris</p>
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>For this analysis the null hypothesis is that the subway ridership is the same when it is raining as when it is not, hence we are performing a 2-tailed test. A typical p-value of 0.05 has been assumed to be adequate to reject the null hypothesis for this test. A Mann-Whitney U test shall be applied for this study.</p>
+<p>A hypothesis test was performed for this analysis, where the null hypothesis was: <em>The mean number of subway entries is the same when it is raining compared with when it is not</em></p>
+<p>i.e. $H_0: \alpha_{raining} = \alpha_{not\_raining}$.</p>
+<p>Consequently, the alternative hypothesis is given by $H_1: \alpha_{raining} \neq \alpha_{not\_raining}$. A two tailed test is required because the difference in the test statistic could be in either direction; either greater of smaller.</p>
+<p>A typical significance value of 0.05 has been chosen to reject the null hypothesis for this test, due to it being the most commonly used value for testing.</p>
 
 </div>
 </div>
@@ -318,7 +328,7 @@ Chris</p>
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The Mann-Whitney U test was chosen due as it is agnostic to the underlying distribution. The entry values are definitely not normally distributed, illustrated below both graphically and using the Shapiro-Wilk test.</p>
+<p>The Mann-Whitney U test was chosen for the hypothesis testing due as it is agnostic to the underlying distribution. The entry values are definitely not normally distributed, illustrated below both graphically and using the Shapiro-Wilk test.</p>
 
 </div>
 </div>
@@ -642,8 +652,7 @@ Mean without rain: 1846
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Given the p-value &lt; 0.05, we can reject the null hypothesis that the two datasets come from the same random variable. Also, the mean when there is rain does appear to be higher than without rain.</p>
-<p>However, these two points alone are insufficient to indicate that rain is causing an increase in ridership; <a href="https://xkcd.com/552/">correllation does not imply causation</a>. There may be an external factor driving this difference, e.g. what if it tends to rain in NYC around peak hour, or perhaps the only rain in May fell on weekdays. Hence further investigation is required.</p>
+<p>Given the p-value &lt; 0.05, we can reject the null hypothesis that the mean of the two distributions are the same, hence the we can accept the alternate hypothesis that they are different. Given the results in the previous question the mean number of entries when it is raining is greater than when it is not.</p>
 
 </div>
 </div>

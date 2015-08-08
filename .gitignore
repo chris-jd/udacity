@@ -56,3 +56,4 @@ docs/_build/
 # PyBuilder
 target/
 _assignment1-notebooks.sh
+intro_to_DS_assignment/.ipynb_checkpoints
