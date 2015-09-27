@@ -57,3 +57,6 @@ docs/_build/
 target/
 _assignment1-notebooks.sh
 intro_to_DS_assignment/.ipynb_checkpoints
+.idea
+*.osm
+myFlaskApp
