@@ -1,23 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from collections import defaultdict
 import xml.etree.cElementTree as ET
 import pprint
 import re
 import codecs
 import json
+from pymongo import MongoClient
 """
 docstring
 """
 
-
 lower = re.compile(r'^([a-z]|_)*$')
 lower_colon = re.compile(r'^([a-z]|_)*:([a-z]|_)*$')
+# Regex to find incompatible names
 problemchars = re.compile(r'[=\+/&<>;\'"\?%#$@\,\. \t\r\n]')
 
 CREATED = [ "version", "changeset", "timestamp", "user", "uid"]
+client = MongoClient()
+db = client['udacity']
 
 
 def shape_element(element):
+
     node = {}
     if element.tag == "node" or element.tag == "way" :
         # YOUR CODE HERE
@@ -31,12 +36,22 @@ def shape_element(element):
                     node['node_refs'] = [child.attrib['ref']]
                 else:
                     node['node_refs'].append(child.attrib['ref'])
-        print node
+        # print node
         return node
     else:
         return None
 
 def process_child_attrib(d, node):
+    """
+    Processes the attributes dictionary of a 'node' or 'way' tag.
+
+    Will split address items into an 'address' sub-dictionary
+    Remaining items will keep their key, value pair
+
+    :param d: Input dictionary of form {'k': key, 'v': value}
+    :param node: The output dictionary for the node.
+    :return: node dictionary with item added appropriately.
+    """
     try:
         k, v = d['k'], d['v']
     except KeyError:
@@ -53,6 +68,13 @@ def process_child_attrib(d, node):
     return node
 
 def process_node_attrib(d, node):
+    """
+    Processes all the attributes in a 'node' or 'way' tag.
+
+    :param d: Dictionary with all the attributes
+    :param node: The output dictionary for the node.
+    :return: Node output dictionary for the node.
+    """
     if ('lat' in d.keys()) and ('lon' in d.keys()):
         node['pos'] = [float(d['lat']), float(d['lon'])]
     for k,v in d.iteritems():
@@ -67,41 +89,18 @@ def process_node_attrib(d, node):
     return node
 
 
-def process_map(file_in, pretty = False):
+def process_map(file_in, write_collection):
     # You do not need to change this file
-    file_out = "{0}.json".format(file_in)
-    data = []
-    with codecs.open(file_out, "w") as fo:
-        for _, element in ET.iterparse(file_in):
-            el = shape_element(element)
-            if el:
-                data.append(el)
-                if pretty:
-                    fo.write(json.dumps(el, indent=2)+"\n")
-                else:
-                    fo.write(json.dumps(el) + "\n")
-    return data
+    for _, element in ET.iterparse(file_in):
+        el = shape_element(element)
+        if el:
+            write_collection.insert_one(el)
 
 def test():
     # NOTE: if you are running this code on your computer, with a larger dataset,
     # call the process_map procedure with pretty=False. The pretty=True option adds
     # additional spaces to the output, making it significantly larger.
     data = process_map('osm_data/perth.osm', True)
-    pprint.pprint(data)
-
-    correct_first_elem = {
-        "id": "261114295",
-        "visible": "true",
-        "type": "node",
-        "pos": [41.9730791, -87.6866303],
-        "created": {
-            "changeset": "11129782",
-            "user": "bbmiller",
-            "version": "7",
-            "uid": "451048",
-            "timestamp": "2012-03-28T18:31:23Z"
-        }
-    }
 
 if __name__ == "__main__":
     test()
