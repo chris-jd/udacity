@@ -1,11 +1,9 @@
 ---
 title: "Australian Football Stats EDA"
 author: "Chris Madeley"
-date: "20 November 2015"
+date: "23 November 2015"
 output: html_document
 ---
-
-# Australian Football Stats Interrogation by Chris Madeley
 
 For this investigation, game data from the AFL, the professional league for Australian Rules Football will be interogated. AFL is over 100 years old, and is a team game with 22 players a side, where players aim to outscore the opposition, where they are awarded six points for a goal, or one point if the kick misses the goal to score a 'behind' (yes, a sport where you get points for missing!). For more information, I encourage you to check the usual suspects, [Wikipedia](https://en.wikipedia.org/wiki/Australian_rules_football) and [YouTube](https://youtu.be/zxhqXzVBen4).
 
@@ -16,11 +14,9 @@ For this investigation, game data from the AFL, the professional league for Aust
 # Notice that the parameter "echo" was set to FALSE for this code chunk.
 # This prevents the code from displaying in the knitted HTML output.
 # You should set echo=FALSE for all code chunks in your file.
-# install.packages('GGally')
 library(ggplot2)
 library(gridExtra)
 library(GGally)
-# install.packages('viridis')
 library(viridis)
 library(plyr)
 library(dplyr)
@@ -41,8 +37,7 @@ psum <- read.csv('./data/afl_player_summary.csv') # summary data for each player
 pms <- read.csv('./data/afl_playerMatchStats.csv') # player match stats
 ```
 
-```{r, Create extra variables}
-colnames(pms)
+```{r, Create_extra_variables}
 pms$gameFloat <- with(pms, year + (round-1)/30) # Add a new value to plot games over time
 psum$dateOfBirth <- as.POSIXlt(psum$dateOfBirth, format="%Y-%m-%d %H:%M:%S") # Convert dates to date objects
 # Add in a column to the player summary indicating how many games are in the data for that player.
@@ -53,7 +48,7 @@ psum <- group_by(pms, playerId) %>%
   merge(psum)
 psum$position <- revalue(psum$position, c("Centre Half Back"="Half Back", "Centre Half Forward"="Half Forward", "Full Back"="Back","Full Forward"="Forward", "Interchange"="Other",
                  "Left Back Pocket"="Back", "Left Forward Pocket"="Forward",  "Left Half Back"="Half Back", "Left Half Forward"="Half Forward", "Left Wing"="Centre",
-                 "Midfielder"="Centre", "Right Back Pocket"="Back", "Right Forward Pocket"="Foward",
+                 "Midfielder"="Centre", "Right Back Pocket"="Back", "Right Forward Pocket"="Forward",
                  "Right Half Back"="Half Back", "Right Half Forward"="Forward", "Right Wing"="Centre", "Ruck Rover"="Rover", "Substitute"="Other","Vice-Captain"="Other"))
 ```
 
@@ -75,20 +70,20 @@ agg20 <- subset(agg, games>20)
 
 ## Data Quality
 Looking at whether the data is well formed, we can investigate the number of home games by team. We observe low counts for two teams, GCFC and GWS, who only joined the competition 2-3 years ago. There also appear to be some games with missing labels. On closer inspection, these 49 games are missing all details, and occur inconsistently across the period 2001 to 2011. 
-```{r, total possible games}
+```{r, total_possible_games}
 homegames_by_team <- group_by(md, homeTeam) %>%
   summarise(games = n()) %>%
   arrange(-games)
 ggplot(aes(x=homeTeam, y=games), data=homegames_by_team) + geom_bar(stat='identity')
 ```
 
-Finally, lets check the quality of the data on a couple of other counts. The games played correlates fairly well with the number of records in the database, except for players with a lot of games played (who debuted before 2001), and players who have 0 recorded games. 
-```{r}
+Now lets check the quality of the data on a between different sets. The games played correlates fairly well with the number of records in the database, except for players with a lot of games played (who debuted before 2001), and players who have 0 recorded games. 
+```{r, games_played}
 ggplot(aes(games, careerGamesPlayed), data=psum) + geom_point()
 ```
 
 When we look at the dates of birth, draft and debut, the data is clearly incomplete. The date of birth would be expected to be fairly consistent by year, but clearly many older players don't have DoB recorded. Additionally, draft and debut information only appears to be available for younger players.
-```{r}
+```{r, DOB}
 ggplot(aes(dateOfBirth), data=psum) + geom_histogram(binwidth=365*24*3600)
 ggplot(aes(debutYear, draftYear), data=psum) + geom_jitter()
 ```
@@ -97,12 +92,12 @@ ggplot(aes(debutYear, draftYear), data=psum) + geom_jitter()
 ## Univariate Plots Section
 First lets investigate the nature of some key variables. First, the number of recorded games per player. Results appear to be well formed, with no obvious outliers. Note that 25% of players play only 14 games or less in this period; very few players actually manage to build a career in the game; and the median number of games is only 44. The maximum number of games recorded is 330, which fits well with our teams playing around 170 home games over the period (along with around 170 away games).
 
-```{r echo=FALSE, Univariate Plots}
+```{r echo=FALSE, Univariate_Plots}
 qplot(x=games, data=psum, binwidth=5)
 summary(psum$games)
 ```
 
-Lets quickly look at the distribution of height and weight for the players. The height distribution looks almost normal, although there are twice as many players who are 180cm compared to 179cm - clearly some rounding happening there. Also an outlier at 200cm, but curiously not at 190cm. Weight distribution is similar, but with slightly longer tails. Same rounding anomolies at 80kg and 100kg. No big outliers here.
+Look at the distribution of height and weight for the players. The height distribution looks almost normal, although there are twice as many players who are 180cm compared to 179cm - clearly some rounding happening there. Also an outlier at 200cm, but curiously not at 190cm. Weight distribution is similar, but with slightly longer tails. Same rounding anomolies at 80kg and 100kg. No big outliers here.
 
 ```{r echo=FALSE, height_and_weight}
 p1 <- qplot(x=heightInCm, data=subset(psum, heightInCm>1), binwidth=1)
@@ -111,27 +106,27 @@ grid.arrange(p1, p2, nrow=1)
 ```
 
 
-Lets look at the distributions of different game statistics, for instance kicks and handballs. These both appear to be similarly distributed; the distribution appears to be similar to log-normal or weibull. Most players appear to have more kicks than handballs.
-```{r}
+Now visualise the distributions of different game statistics, for instance kicks and handballs. These both appear to be similarly distributed; the distribution appears to be similar to log-normal or weibull. Most players appear to have more kicks than handballs.
+```{r, kicks_handballs}
 p1 <- qplot(x=kicks, data=pms, binwidth=1)
 p2 <- qplot(x=handballs, data=pms, binwidth=1)
 grid.arrange(p1, p2, nrow=2)
 ```
 
 Most players score 0 goals per game, which is unsurprising given an average side will score around 15 goals in a game, shared amongst 22 players. Transforming the y-axis by log10 reveals the long tail of the distribution.
-```{r}
+```{r, goals_behinds}
 p1 <- qplot(x=goals, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
 p2 <- qplot(x=behinds, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
 grid.arrange(p1, p2, nrow=2)
 ```
 
 Hitouts are a unique part of the game, where the ball is bounced or thrown up by the umpire, and a key-position player named the _ruck_ will attempt to tap the ball to a player on their side, known as a hitout. Because only a handful of tall players will play in the ruck, there are a large number of players with no hitouts. Beyond that the tail is very long, but decreases sumwhat rapidly above 20 hitouts.
-```{r}
+```{r, hitouts_uni}
 qplot(x=hitouts, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
 ```
 
 Finally we can look at how the aggregate statistics compare to the individual game statistics. As expected, there is a reversion towards the mean due to large number theory.
-```{r}
+```{r, aggregate_stats}
 p1 <- qplot(x=kicks, data=agg20, binwidth=1) + xlim(0,30)
 p2 <- qplot(x=kicks, data=pms, binwidth=1) + xlim(0,30)
 grid.arrange(p1, p2, nrow=2)
@@ -156,160 +151,124 @@ Players simple physical characteristics (weight, height), and their number of ga
 A simple numerical indicator for each game was built as the composite of the year and round number, to allow for easier time series plotting without giant gaps in the off-season.
 
 ### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
-A new aggregated dataset was constructed to reduce the volume of data, and to better gauge players average performances. Otherwise the data was well formatted during the scraping and data wrangling in Python.
-
-```{r}
-qplot(x=inside50s, y=marksInside50, data=pms, geom='jitter')
-```
-
-```{r}
-qplot(x=heightInCm, y=weightInKg, data=subset(psum, weightInKg>1), geom='jitter') + geom_smooth()
-
-```
-
-
-```{r}
-length(subset(md, homeTeam==''))
-```
-
-```{r}
-mydata <- select(subset(pms, teamAbbr=='WCE'),
-                 dreamTeamPoints, playerId, year, round, surname, givenName) %>%
-  group_by(playerId, year, surname, givenName) %>%
-  summarise(average_points = mean(dreamTeamPoints),
-            games = n()) %>%
-  ungroup() %>%
-  filter(games>=15) %>%
-  arrange(-average_points)
-head(mydata, 20)
-
-length(unique(mydata[1:20,]$playerId))
-
-```
-```{r}
-filter(mydata, surname=='Cousins')
-```
-
-# Univariate Plots Section
-```{r}
-temp <- group_by(pms, playerId) %>%
-  summarise(games=n())
-ggplot(aes(x=games), data=temp) + geom_histogram(binwidth=10)
-```
-
-
-```{r echo=FALSE, 1Univariate_Plots}
-myplayers <- unique(mydata[1:20,]$playerId)
-temp <- subset(pms, playerId %in% myplayers)
-ggplot(aes(x=gameFloat, y=dreamTeamPoints), data=temp) + geom_point(aes(color=surname), alpha=0.2) +
-  geom_smooth(aes(color=surname))
-```
-
-```{r}
-ggplot(aes(x=disposals), data=pms) + geom_histogram(binwidth=1)
-qplot(x=hitouts, data=subset(pms, pms$hitouts>0), binwidth=1)
-# ggplot(aes(x=goals), data=pms) + geom_histogram(binwidth=1)
-
-```
-
-```{r}
-qplot(x=heightInCm, data=subset(psum, psum$heightInCm>120), binwidth=1)
-```
-
-```{r}
-hitouts <- group_by(pms, playerId) %>%
-  summarise(hitouts = mean(hitouts)) %>%
-  ungroup()
-temp <- select(psum, playerId, surname, heightInCm) %>%
-  merge(hitouts) %>%
-  subset((!is.na(heightInCm))&heightInCm>120)
-ggplot(aes(x=heightInCm, y=hitouts), data=temp) + geom_jitter() + geom_smooth()
-```
-
-```{r}
-temp <- select(pms, playerId, behinds, bounces, clangers, clearances_totalClearances,
-               contestedMarks, contestedPossessions, disposals, dreamTeamPoints,
-               freesFor, freesAgainst, goals, handballs, kicks, marks, marksInside50, tackles) %>%
-  group_by(playerId) %>%
-  summarise_each(funs(mean)) %>%
-  ungroup() %>%
-  merge(select(psum, playerId, heightInCm, weightInKg, games)) %>%
-  subset((!is.na(heightInCm))&heightInCm>120) %>%
-  subset(games>20)
-```
-
-```{r}
-qplot(x=games, data=psum)
-```
-
-```{r}
-# colnames(temp)
-ggplot(aes(x=heightInCm, y=marksInside50), data=temp) + geom_jitter() + geom_smooth()
-ggplot(aes(x=heightInCm, y=marks), data=temp) + geom_jitter() + geom_smooth()
-ggplot(aes(x=heightInCm, y=freesAgainst), data=temp) + geom_jitter() + geom_smooth()
-
-ggplot(aes(x=freesFor, y=freesAgainst), data=temp) + geom_jitter(aes(color=heightInCm)) +
-  scale_colour_gradientn(colours=viridis(256))
-
-```
-
-
-```{r}
-tackles <- group_by(pms, playerId) %>%
-  summarise(tackles = mean(tackles)) %>%
-  ungroup()
-temp <- select(psum, playerId, surname, weightInKg) %>%
-  merge(tackles) %>%
-  subset((!is.na(weightInKg))&weightInKg>40)
-ggplot(aes(x=weightInKg, y=tackles), data=temp) + geom_jitter() + geom_smooth()
-```
-
-
-
+A new aggregated dataset was constructed to reduce the volume of data, and to better gauge players average performances. Additionally, the number of positions was reduced from 24 to 9 to simplify interpretation. Otherwise the data was well formatted during the scraping and data wrangling in Python.
 
 # Bivariate Plots Section
-```{r echo=FALSE, Bivariate_Plots}
+
+To kickstart the investigation into relationships between variables, multiple scatterplot matrices were built between various combinations of variables. Some variables that are expected to correlate well do, e.g. goals and behinds (0.93), height and weight (0.85) and marks inside 50m with goals (0.93). However the more interesting combinations are:
+- Tackles and clearances (0.65), probably because players who play 'on the ball' are heavily involved in closer scuffles in the game, hence will rack up both stats.
+- Frees kicks for and against are correlated with 0.47, which indicates that the free kicks paid for and against most players balance out.
+- There is a weak negative correlation between height and kicks (-0.41), although perhaps this is more related to the role that players have on the ground, rather than anything to do with their skill at kicking.
+
+(Note: high-res versions of these plots are included in the repo)
+```{r echo=FALSE, bivariate_Plots}
 ggpairs(select(agg20, goals, behinds, handballs, kicks, marks, tackles, heightInCm, weightInKg, games), alpha=0.5)
 ggpairs(select(agg20, goals, marksInside50, inside50s, kicks, marks, heightInCm, weightInKg, games), alpha=0.5)
 ggpairs(select(agg20, kicks, marks, tackles, freesFor, freesAgainst, clearances_totalClearances, hitouts, heightInCm, weightInKg, games), alpha=0.5)
+ggpairs(select(agg20, goals, kicks, tackles, heightInCm, weightInKg, position), alpha=0.5)
+```
 
-ggpairs(select(agg20, goals, kicks, marks, tackles, position), alpha=0.5)
+When we look closer at the relationship between free kicks for and against individual players, we notice that although it balances out for most players, there is still a handful of 'dirty' players who concede 2-4 times the number of free kicks as they receive.
+```{r, free_kicks}
+p1 <- qplot(x=freesFor, y=freesAgainst, data=agg20)
+p2 <- qplot(x=freesAgainst/freesFor, data=agg20)
+grid.arrange(p1, p2, ncol=2)
+```
 
-summary(agg20$position)
+Finally, hitouts were moderately strongly correlated with height in the previous scatter matrices. However, if we filter on players who are frequently involved in hitouts, i.e. play in that role, by filtering for average hitouts greater than 5, we find that the correlation is less strong. Specifically, after applying the filter the correlation coefficient has dropped from 0.594 to 0.439. Clearly height is only a component in performing well in this role, skill and jump height probably also play an important role. 
+```{r, hitouts}
+hitout_df = subset(agg20, hitouts>5)
+qplot(x=heightInCm, y=hitouts, data=hitout_df, geom='jitter')
+cor.test(hitout_df$heightInCm, hitout_df$hitouts)
 ```
 
 # Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+Described above.
 
 ### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+Described above.
 
 ### What was the strongest relationship you found?
-
-
-
+Goals and behinds, marks inside 50m and goals. These relationships are unsurprising, given a mark inside 50m leads to a shot on goal, and behinds happen when you miss the goal.
 
 # Multivariate Plots Section
 
-```{r echo=FALSE, Multivariate_Plots}
+Lets take a look at the accuracy of players in kicking goals. In AFL, there are four posts to kick at, the inner goal posts, which will score 6 points, and the outer behind posts, which only score 1 point. The accuracy of a player kicking for goal is the number of goals, divided by shots on goal (i.e. goals+behinds). The accuracy has been evaluated for all players with at least 50 shots on goal, and this has been further subdivided for goals by position and the accuracy of players in each position. Surprisingly, median forwards only seem to be marginally more accurate than non-forwards: median 60% vs 57.8%. However, the long, high tail of the box plot suggests that the best forward are very accurate; over 75%.
 
+```{r, goal_accuracy}
+goal_temp <- select(pms, goals, behinds, playerId) %>%
+  group_by(playerId) %>%
+  summarise(shot_count = sum(goals)+sum(behinds),
+            goals = mean(goals),
+            behinds = mean(behinds),
+            accuracy = mean(goals)/(mean(goals)+mean(behinds)),
+            games = n()) %>%
+  ungroup() %>%
+  merge(select(psum, playerId, position)) %>%
+  subset(shot_count>50)
+
+p1 <- ggplot(aes(x=goals, y=behinds), data=goal_temp) + geom_point() + geom_smooth()
+p2 <- qplot(x=accuracy, data=goal_temp)
+p3 <- qplot(x=position, y=goals, data=goal_temp, geom='boxplot')
+p4 <- qplot(x=position, y=accuracy, data=goal_temp, geom='boxplot')
+group_by(goal_temp, position) %>% summarise(median(accuracy))
+median(with(subset(goal_temp, position != "Forward"), median(accuracy)))
+grid.arrange(p1, p2, p3, p4, ncol=2)
+```
+
+When we colour the scatter plot by position, we see that forwards and half-forwards dominate the high-scoring section of the plot, as expected.
+```{r, goals_coloured}
+ggplot(aes(x=goals, y=behinds), data=goal_temp) + geom_point(aes(color=position))
+```
+
+Finally, lets look at the change in the game over time. By plotting movement in certain statistics over time by team, and as an aggregate, we can observe certain patters. For instance, the number of kicks per player per match has increased only slightly over time, although there have been periods where Collingwood (COLL) have played a high-kicking game (2006-2011). However number of handballs increased significantly over the course of the decade, a trend initially started by West Coast (WCE) in 2006-7, but practiced heavily by Geelong (GEEL) through 2007-2010. However the trend has reversed and stabilised in recent years.
+
+```{r, time_series_df}
+my_df <- select(pms, year, gameFloat, teamAbbr, handballs, kicks, tackles, clearances_totalClearances) %>%
+  group_by(year, gameFloat, teamAbbr) %>%
+  summarise_each(funs(mean)) %>%
+  ungroup()
+```
+
+```{r, time_series_1}
+p1 <- ggplot(aes(x=year, y=kicks), data=my_df) +
+  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
+  geom_smooth(aes(x=gameFloat-0.5), color='black')
+p2 <- ggplot(aes(x=year, y=handballs), data=my_df) + 
+  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
+  geom_smooth(aes(x=gameFloat-0.5), color='black')
+grid.arrange(p1, p2, ncol=1)
+```
+
+Throughout the decade there has been a lot of talk about 'congested' football, with many players close to the ball with great intensity. This can be seen in the tackle count rising steadily throughout the decade from 2001-2011. Sydney (SYD) have been known throughout this period for playing tight, congested football, which is seen with them leading the league in tackle count frequently throughout this period. Additionally, Sydney prominently led clearances (getting the ball out from a congested zone) throughout much of the decade too, especially in 2005 - 2013, where they were typically high above league averages.
+```{r, time_series_2}
+p1 <- ggplot(aes(x=year, y=tackles), data=my_df) +
+  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") + 
+  geom_smooth(aes(x=gameFloat-0.5), color='black')
+p2 <- ggplot(aes(x=year, y=clearances_totalClearances), data=my_df) + 
+  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") + 
+  geom_smooth(aes(x=gameFloat-0.5), color='black')
+grid.arrange(p1, p2, ncol=1)
 ```
 
 # Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+Discussed above.
 
 ### Were there any interesting or surprising interactions between features?
-
-### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
-
+Discussed above.
 ------
 
 # Final Plots and Summary
 
+Todo
+
 ### Plot One
 ```{r echo=FALSE, Plot_One}
-
+#TODO
 ```
 
 ### Description One
@@ -317,7 +276,7 @@ summary(agg20$position)
 
 ### Plot Two
 ```{r echo=FALSE, Plot_Two}
-
+#TODO
 ```
 
 ### Description Two
@@ -325,7 +284,7 @@ summary(agg20$position)
 
 ### Plot Three
 ```{r echo=FALSE, Plot_Three}
-
+#TODO
 ```
 
 ### Description Three
