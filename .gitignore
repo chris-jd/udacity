@@ -61,3 +61,5 @@ intro_to_DS_assignment/.ipynb_checkpoints
 *.osm
 myFlaskApp
 *-checkpoint.ipynb
+EDA_assignment/.RData
+EDA_assignment/.Rhistory
