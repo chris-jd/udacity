@@ -5,8 +5,9 @@ date: "20 November 2015"
 output: html_document
 ---
 
-Australian Football Stats Interrogation by Chris Madeley
-========================================================
+# Australian Football Stats Interrogation by Chris Madeley
+
+For this investigation, game data from the AFL, the professional league for Australian Rules Football will be interogated. AFL is over 100 years old, and is a team game with 22 players a side, where players aim to outscore the opposition, where they are awarded six points for a goal, or one point if the kick misses the goal to score a 'behind' (yes, a sport where you get points for missing!). For more information, I encourage you to check the usual suspects, [Wikipedia](https://en.wikipedia.org/wiki/Australian_rules_football) and [YouTube](https://youtu.be/zxhqXzVBen4).
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # Load all of the packages that you end up using
@@ -22,23 +23,60 @@ library(dplyr)
 library(viridis)
 ```
 
+The data for this analysis has been scraped from the AFL website, using a Python script contained in this same repo. Appropriate queries return json documents, which have been lightly modified and formatted into  csvs of tidy data using Pandas. The data comes from all matches from 2001 - 2015, although not all statistics are recorded for earlier seasons.
+
+There are three data sets that have been collected from the website:
+- Match Data (`md`), a list of every match played, with key results about the match.
+- Player Match Stats (`pms`), contains a record for each players performance for each match, with vital statistics including, kicks, handballs, tackles, marks, hitouts, goals and behinds.
+- Player Summary Data (`psum`), key biographical data for each player, including height, weight, date of birth, draft year and age. This dataset incomplete for some variables.
+
 ```{r echo=FALSE, Load_the_Data}
 # Load the Data
+setwd('~/udacity_repo/EDA_assignment')
 md <- read.csv('./data/afl_matchdata.csv') # match data
-psum <- read.csv('./data/afl_player_summary.csv') #
+psum <- read.csv('./data/afl_player_summary.csv') # summary data for each player
 pms <- read.csv('./data/afl_playerMatchStats.csv') # player match stats
 ```
 
-```{r}
+```{r, Create extra variables}
 colnames(pms)
 pms$gameFloat <- with(pms, year + (round-1)/30) # Add a new value to plot games over time
-
-# Add in a column to the player summary indicating how many games are in the data
+psum$dateOfBirth <- as.POSIXlt(psum$dateOfBirth, format="%Y-%m-%d %H:%M:%S") # Convert dates to date objects
+# Add in a column to the player summary indicating how many games are in the data for that player.
+# Note that this will be different to total games played for players who debuted prior to 2001.
 psum <- group_by(pms, playerId) %>%
   summarise(games = n()) %>%
   ungroup() %>%
   merge(psum)
+```
 
+# Univariate Plots Section
+First lets investigate the nature of some key variables. First, the number of recorded games per player. Results appear to be well formed, with no obvious outliers. Note that 25% of players play only 14 games or less in this period; very few players actually manage to build a career in the game; and the median number of games is only 44.
+
+```{r echo=FALSE, Univariate Plots}
+qplot(x=games, data=psum, binwidth=5)
+summary(psum$games)
+```
+
+
+Looking at whether the data is well formed, we can investigate the number of home games by team. We observe low counts for two teams, GCFC and GWS, who only joined the competition 2-3 years ago. There also appear to be some games with missing labels, given an 
+```{r, total possible games}
+homegames_by_team <- group_by(md, homeTeam) %>%
+  summarise(games = n()) %>%
+  arrange(-games)
+ggplot(aes(x=homeTeam, y=games), data=homegames_by_team) + geom_bar(stat='identity')
+```
+
+Finally, lets check the correlation between 
+```{r}
+ggplot(aes(games, careerGamesPlayed), data=psum) + geom_point()
+ggplot(aes(debutYear, careerGamesPlayed), data=psum) + geom_jitter()
+qplot(draftYear, data=psum, binwidth=1)
+qplot(dateOfBirth, data=psum, binwidth=365)
+```
+
+```{r}
+length(subset(md, homeTeam==''))
 ```
 
 ```{r}
@@ -67,7 +105,7 @@ ggplot(aes(x=games), data=temp) + geom_histogram(binwidth=10)
 ```
 
 
-```{r echo=FALSE, Univariate_Plots}
+```{r echo=FALSE, 1Univariate_Plots}
 myplayers <- unique(mydata[1:20,]$playerId)
 temp <- subset(pms, playerId %in% myplayers)
 ggplot(aes(x=gameFloat, y=dreamTeamPoints), data=temp) + geom_point(aes(color=surname), alpha=0.2) +
