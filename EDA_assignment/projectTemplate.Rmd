@@ -16,11 +16,14 @@ For this investigation, game data from the AFL, the professional league for Aust
 # Notice that the parameter "echo" was set to FALSE for this code chunk.
 # This prevents the code from displaying in the knitted HTML output.
 # You should set echo=FALSE for all code chunks in your file.
-
+# install.packages('GGally')
 library(ggplot2)
-library(dplyr)
+library(gridExtra)
+library(GGally)
 # install.packages('viridis')
 library(viridis)
+library(plyr)
+library(dplyr)
 ```
 
 The data for this analysis has been scraped from the AFL website, using a Python script contained in this same repo. Appropriate queries return json documents, which have been lightly modified and formatted into  csvs of tidy data using Pandas. The data comes from all matches from 2001 - 2015, although not all statistics are recorded for earlier seasons.
@@ -48,18 +51,30 @@ psum <- group_by(pms, playerId) %>%
   summarise(games = n()) %>%
   ungroup() %>%
   merge(psum)
+psum$position <- revalue(psum$position, c("Centre Half Back"="Half Back", "Centre Half Forward"="Half Forward", "Full Back"="Back","Full Forward"="Forward", "Interchange"="Other",
+                 "Left Back Pocket"="Back", "Left Forward Pocket"="Forward",  "Left Half Back"="Half Back", "Left Half Forward"="Half Forward", "Left Wing"="Centre",
+                 "Midfielder"="Centre", "Right Back Pocket"="Back", "Right Forward Pocket"="Foward",
+                 "Right Half Back"="Half Back", "Right Half Forward"="Forward", "Right Wing"="Centre", "Ruck Rover"="Rover", "Substitute"="Other","Vice-Captain"="Other"))
 ```
 
-# Univariate Plots Section
-First lets investigate the nature of some key variables. First, the number of recorded games per player. Results appear to be well formed, with no obvious outliers. Note that 25% of players play only 14 games or less in this period; very few players actually manage to build a career in the game; and the median number of games is only 44.
+We're also going to construct one extra dataframe, which is a aggregate of certain player stats, combined with the mean of their game statistics across the period. A subset of this dataset, including only players with more than 20 games, has also been built.
 
-```{r echo=FALSE, Univariate Plots}
-qplot(x=games, data=psum, binwidth=5)
-summary(psum$games)
+```{r, Aggregate_stats}
+agg <- select(pms, playerId, behinds, bounces, clangers, clearances_totalClearances,
+               contestedMarks, contestedPossessions, disposals, dreamTeamPoints, hitouts,
+               freesFor, freesAgainst, goals, inside50s, handballs, kicks, marks, marksInside50, tackles) %>%
+  group_by(playerId) %>%
+  summarise_each(funs(mean)) %>%
+  ungroup() %>%
+  merge(select(psum, playerId, heightInCm, weightInKg, games, position)) %>%
+  subset((!is.na(heightInCm))&(heightInCm>1)&(!is.na(weightInKg))&(weightInKg>1))
+ 
+# Make a subset for players with more than 20 games
+agg20 <- subset(agg, games>20)
 ```
 
-
-Looking at whether the data is well formed, we can investigate the number of home games by team. We observe low counts for two teams, GCFC and GWS, who only joined the competition 2-3 years ago. There also appear to be some games with missing labels, given an 
+## Data Quality
+Looking at whether the data is well formed, we can investigate the number of home games by team. We observe low counts for two teams, GCFC and GWS, who only joined the competition 2-3 years ago. There also appear to be some games with missing labels. On closer inspection, these 49 games are missing all details, and occur inconsistently across the period 2001 to 2011. 
 ```{r, total possible games}
 homegames_by_team <- group_by(md, homeTeam) %>%
   summarise(games = n()) %>%
@@ -67,13 +82,91 @@ homegames_by_team <- group_by(md, homeTeam) %>%
 ggplot(aes(x=homeTeam, y=games), data=homegames_by_team) + geom_bar(stat='identity')
 ```
 
-Finally, lets check the correlation between 
+Finally, lets check the quality of the data on a couple of other counts. The games played correlates fairly well with the number of records in the database, except for players with a lot of games played (who debuted before 2001), and players who have 0 recorded games. 
 ```{r}
 ggplot(aes(games, careerGamesPlayed), data=psum) + geom_point()
-ggplot(aes(debutYear, careerGamesPlayed), data=psum) + geom_jitter()
-qplot(draftYear, data=psum, binwidth=1)
-qplot(dateOfBirth, data=psum, binwidth=365)
 ```
+
+When we look at the dates of birth, draft and debut, the data is clearly incomplete. The date of birth would be expected to be fairly consistent by year, but clearly many older players don't have DoB recorded. Additionally, draft and debut information only appears to be available for younger players.
+```{r}
+ggplot(aes(dateOfBirth), data=psum) + geom_histogram(binwidth=365*24*3600)
+ggplot(aes(debutYear, draftYear), data=psum) + geom_jitter()
+```
+
+# EDA
+## Univariate Plots Section
+First lets investigate the nature of some key variables. First, the number of recorded games per player. Results appear to be well formed, with no obvious outliers. Note that 25% of players play only 14 games or less in this period; very few players actually manage to build a career in the game; and the median number of games is only 44. The maximum number of games recorded is 330, which fits well with our teams playing around 170 home games over the period (along with around 170 away games).
+
+```{r echo=FALSE, Univariate Plots}
+qplot(x=games, data=psum, binwidth=5)
+summary(psum$games)
+```
+
+Lets quickly look at the distribution of height and weight for the players. The height distribution looks almost normal, although there are twice as many players who are 180cm compared to 179cm - clearly some rounding happening there. Also an outlier at 200cm, but curiously not at 190cm. Weight distribution is similar, but with slightly longer tails. Same rounding anomolies at 80kg and 100kg. No big outliers here.
+
+```{r echo=FALSE, height_and_weight}
+p1 <- qplot(x=heightInCm, data=subset(psum, heightInCm>1), binwidth=1)
+p2 <- qplot(x=weightInKg, data=subset(psum, weightInKg>1), binwidth=1)
+grid.arrange(p1, p2, nrow=1)
+```
+
+
+Lets look at the distributions of different game statistics, for instance kicks and handballs. These both appear to be similarly distributed; the distribution appears to be similar to log-normal or weibull. Most players appear to have more kicks than handballs.
+```{r}
+p1 <- qplot(x=kicks, data=pms, binwidth=1)
+p2 <- qplot(x=handballs, data=pms, binwidth=1)
+grid.arrange(p1, p2, nrow=2)
+```
+
+Most players score 0 goals per game, which is unsurprising given an average side will score around 15 goals in a game, shared amongst 22 players. Transforming the y-axis by log10 reveals the long tail of the distribution.
+```{r}
+p1 <- qplot(x=goals, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
+p2 <- qplot(x=behinds, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
+grid.arrange(p1, p2, nrow=2)
+```
+
+Hitouts are a unique part of the game, where the ball is bounced or thrown up by the umpire, and a key-position player named the _ruck_ will attempt to tap the ball to a player on their side, known as a hitout. Because only a handful of tall players will play in the ruck, there are a large number of players with no hitouts. Beyond that the tail is very long, but decreases sumwhat rapidly above 20 hitouts.
+```{r}
+qplot(x=hitouts, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
+```
+
+Finally we can look at how the aggregate statistics compare to the individual game statistics. As expected, there is a reversion towards the mean due to large number theory.
+```{r}
+p1 <- qplot(x=kicks, data=agg20, binwidth=1) + xlim(0,30)
+p2 <- qplot(x=kicks, data=pms, binwidth=1) + xlim(0,30)
+grid.arrange(p1, p2, nrow=2)
+```
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+There are three data sets that have been collected from the website:
+- Match Data (`md`), a list of every match played, with key results about the match.
+- Player Match Stats (`pms`), contains a record for each players performance for each match, with vital statistics including, kicks, handballs, tackles, marks, hitouts, goals and behinds.
+- Player Summary Data (`psum`), key biographical data for each player, including height, weight, date of birth, draft year and age. This dataset incomplete for some variables.
+
+### What is/are the main feature(s) of interest in your dataset?
+Statistics for players across different games,.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+Players simple physical characteristics (weight, height), and their number of games experience, to see if these influence the occurence of them performing certain roles.
+
+### Did you create any new variables from existing variables in the dataset?
+A simple numerical indicator for each game was built as the composite of the year and round number, to allow for easier time series plotting without giant gaps in the off-season.
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+A new aggregated dataset was constructed to reduce the volume of data, and to better gauge players average performances. Otherwise the data was well formatted during the scraping and data wrangling in Python.
+
+```{r}
+qplot(x=inside50s, y=marksInside50, data=pms, geom='jitter')
+```
+
+```{r}
+qplot(x=heightInCm, y=weightInKg, data=subset(psum, weightInKg>1), geom='jitter') + geom_smooth()
+
+```
+
 
 ```{r}
 length(subset(md, homeTeam==''))
@@ -172,23 +265,17 @@ ggplot(aes(x=weightInKg, y=tackles), data=temp) + geom_jitter() + geom_smooth()
 ```
 
 
-# Univariate Analysis
-
-### What is the structure of your dataset?
-
-### What is/are the main feature(s) of interest in your dataset?
-
-### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
-
-### Did you create any new variables from existing variables in the dataset?
-
-### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
-
 
 
 # Bivariate Plots Section
 ```{r echo=FALSE, Bivariate_Plots}
+ggpairs(select(agg20, goals, behinds, handballs, kicks, marks, tackles, heightInCm, weightInKg, games), alpha=0.5)
+ggpairs(select(agg20, goals, marksInside50, inside50s, kicks, marks, heightInCm, weightInKg, games), alpha=0.5)
+ggpairs(select(agg20, kicks, marks, tackles, freesFor, freesAgainst, clearances_totalClearances, hitouts, heightInCm, weightInKg, games), alpha=0.5)
 
+ggpairs(select(agg20, goals, kicks, marks, tackles, position), alpha=0.5)
+
+summary(agg20$position)
 ```
 
 # Bivariate Analysis
