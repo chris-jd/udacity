@@ -1,0 +1,210 @@
+---
+title: "Australian Football Stats EDA"
+author: "Chris Madeley"
+date: "20 November 2015"
+output: html_document
+---
+
+Australian Football Stats Interrogation by Chris Madeley
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(dplyr)
+# install.packages('viridis')
+library(viridis)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+md <- read.csv('./data/afl_matchdata.csv') # match data
+psum <- read.csv('./data/afl_player_summary.csv') #
+pms <- read.csv('./data/afl_playerMatchStats.csv') # player match stats
+```
+
+```{r}
+colnames(pms)
+pms$gameFloat <- with(pms, year + (round-1)/30) # Add a new value to plot games over time
+
+# Add in a column to the player summary indicating how many games are in the data
+psum <- group_by(pms, playerId) %>%
+  summarise(games = n()) %>%
+  ungroup() %>%
+  merge(psum)
+
+```
+
+```{r}
+mydata <- select(subset(pms, teamAbbr=='WCE'),
+                 dreamTeamPoints, playerId, year, round, surname, givenName) %>%
+  group_by(playerId, year, surname, givenName) %>%
+  summarise(average_points = mean(dreamTeamPoints),
+            games = n()) %>%
+  ungroup() %>%
+  filter(games>=15) %>%
+  arrange(-average_points)
+head(mydata, 20)
+
+length(unique(mydata[1:20,]$playerId))
+
+```
+```{r}
+filter(mydata, surname=='Cousins')
+```
+
+# Univariate Plots Section
+```{r}
+temp <- group_by(pms, playerId) %>%
+  summarise(games=n())
+ggplot(aes(x=games), data=temp) + geom_histogram(binwidth=10)
+```
+
+
+```{r echo=FALSE, Univariate_Plots}
+myplayers <- unique(mydata[1:20,]$playerId)
+temp <- subset(pms, playerId %in% myplayers)
+ggplot(aes(x=gameFloat, y=dreamTeamPoints), data=temp) + geom_point(aes(color=surname), alpha=0.2) +
+  geom_smooth(aes(color=surname))
+```
+
+```{r}
+ggplot(aes(x=disposals), data=pms) + geom_histogram(binwidth=1)
+qplot(x=hitouts, data=subset(pms, pms$hitouts>0), binwidth=1)
+# ggplot(aes(x=goals), data=pms) + geom_histogram(binwidth=1)
+
+```
+
+```{r}
+qplot(x=heightInCm, data=subset(psum, psum$heightInCm>120), binwidth=1)
+```
+
+```{r}
+hitouts <- group_by(pms, playerId) %>%
+  summarise(hitouts = mean(hitouts)) %>%
+  ungroup()
+temp <- select(psum, playerId, surname, heightInCm) %>%
+  merge(hitouts) %>%
+  subset((!is.na(heightInCm))&heightInCm>120)
+ggplot(aes(x=heightInCm, y=hitouts), data=temp) + geom_jitter() + geom_smooth()
+```
+
+```{r}
+temp <- select(pms, playerId, behinds, bounces, clangers, clearances_totalClearances,
+               contestedMarks, contestedPossessions, disposals, dreamTeamPoints,
+               freesFor, freesAgainst, goals, handballs, kicks, marks, marksInside50, tackles) %>%
+  group_by(playerId) %>%
+  summarise_each(funs(mean)) %>%
+  ungroup() %>%
+  merge(select(psum, playerId, heightInCm, weightInKg, games)) %>%
+  subset((!is.na(heightInCm))&heightInCm>120) %>%
+  subset(games>20)
+```
+
+```{r}
+qplot(x=games, data=psum)
+```
+
+```{r}
+# colnames(temp)
+ggplot(aes(x=heightInCm, y=marksInside50), data=temp) + geom_jitter() + geom_smooth()
+ggplot(aes(x=heightInCm, y=marks), data=temp) + geom_jitter() + geom_smooth()
+ggplot(aes(x=heightInCm, y=freesAgainst), data=temp) + geom_jitter() + geom_smooth()
+
+ggplot(aes(x=freesFor, y=freesAgainst), data=temp) + geom_jitter(aes(color=heightInCm)) +
+  scale_colour_gradientn(colours=viridis(256))
+
+```
+
+
+```{r}
+tackles <- group_by(pms, playerId) %>%
+  summarise(tackles = mean(tackles)) %>%
+  ungroup()
+temp <- select(psum, playerId, surname, weightInKg) %>%
+  merge(tackles) %>%
+  subset((!is.na(weightInKg))&weightInKg>40)
+ggplot(aes(x=weightInKg, y=tackles), data=temp) + geom_jitter() + geom_smooth()
+```
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+### What is/are the main feature(s) of interest in your dataset?
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+### Did you create any new variables from existing variables in the dataset?
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, Bivariate_Plots}
+
+```
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+### What was the strongest relationship you found?
+
+
+
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, Multivariate_Plots}
+
+```
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+### Were there any interesting or surprising interactions between features?
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# Reflection
