@@ -38,31 +38,53 @@ pms <- read.csv('./data/afl_playerMatchStats.csv') # player match stats
 ```
 
 ```{r, Create_extra_variables}
-pms$gameFloat <- with(pms, year + (round-1)/30) # Add a new value to plot games over time
-psum$dateOfBirth <- as.POSIXlt(psum$dateOfBirth, format="%Y-%m-%d %H:%M:%S") # Convert dates to date objects
-# Add in a column to the player summary indicating how many games are in the data for that player.
-# Note that this will be different to total games played for players who debuted prior to 2001.
+# Add a new value to plot games over time
+pms$gameFloat <- with(pms, year + (round-1)/30) 
+# Convert dates to date objects
+psum$dateOfBirth <- as.POSIXlt(psum$dateOfBirth, format="%Y-%m-%d %H:%M:%S") 
+# Add in a column to the player summary indicating how many games are in the
+# data for that player. Note that this will be different to total games played
+# for players who debuted prior to 2001.
 psum <- group_by(pms, playerId) %>%
   summarise(games = n()) %>%
   ungroup() %>%
   merge(psum)
-psum$position <- revalue(psum$position, c("Centre Half Back"="Half Back", "Centre Half Forward"="Half Forward", "Full Back"="Back","Full Forward"="Forward", "Interchange"="Other",
-                 "Left Back Pocket"="Back", "Left Forward Pocket"="Forward",  "Left Half Back"="Half Back", "Left Half Forward"="Half Forward", "Left Wing"="Centre",
-                 "Midfielder"="Centre", "Right Back Pocket"="Back", "Right Forward Pocket"="Forward",
-                 "Right Half Back"="Half Back", "Right Half Forward"="Forward", "Right Wing"="Centre", "Ruck Rover"="Rover", "Substitute"="Other","Vice-Captain"="Other"))
+psum$position <- revalue(psum$position,
+                         c("Centre Half Back"="Half Back",
+                           "Centre Half Forward"="Half Forward",
+                           "Full Back"="Back",
+                           "Full Forward"="Forward",
+                           "Interchange"="Other",
+                           "Left Back Pocket"="Back",
+                           "Left Forward Pocket"="Forward",
+                           "Left Half Back"="Half Back",
+                           "Left Half Forward"="Half Forward",
+                           "Left Wing"="Centre",
+                           "Midfielder"="Centre",
+                           "Right Back Pocket"="Back",
+                           "Right Forward Pocket"="Forward",
+                           "Right Half Back"="Half Back",
+                           "Right Half Forward"="Forward",
+                           "Right Wing"="Centre",
+                           "Ruck Rover"="Rover",
+                           "Substitute"="Other",
+                           "Vice-Captain"="Other"))
 ```
 
 We're also going to construct one extra dataframe, which is a aggregate of certain player stats, combined with the mean of their game statistics across the period. A subset of this dataset, including only players with more than 20 games, has also been built.
 
 ```{r, Aggregate_stats}
-agg <- select(pms, playerId, behinds, bounces, clangers, clearances_totalClearances,
-               contestedMarks, contestedPossessions, disposals, dreamTeamPoints, hitouts,
-               freesFor, freesAgainst, goals, inside50s, handballs, kicks, marks, marksInside50, tackles) %>%
+agg <- select(pms, playerId, behinds, bounces, clangers,
+              clearances_totalClearances, contestedMarks, contestedPossessions,
+              disposals, dreamTeamPoints, hitouts, freesFor, freesAgainst,
+              goals, inside50s, handballs, kicks, marks, marksInside50,
+              tackles) %>%
   group_by(playerId) %>%
   summarise_each(funs(mean)) %>%
   ungroup() %>%
   merge(select(psum, playerId, heightInCm, weightInKg, games, position)) %>%
-  subset((!is.na(heightInCm))&(heightInCm>1)&(!is.na(weightInKg))&(weightInKg>1))
+  subset((!is.na(heightInCm))&(heightInCm>1)&
+           (!is.na(weightInKg))&(weightInKg>1))
  
 # Make a subset for players with more than 20 games
 agg20 <- subset(agg, games>20)
@@ -74,7 +96,8 @@ Looking at whether the data is well formed, we can investigate the number of hom
 homegames_by_team <- group_by(md, homeTeam) %>%
   summarise(games = n()) %>%
   arrange(-games)
-ggplot(aes(x=homeTeam, y=games), data=homegames_by_team) + geom_bar(stat='identity')
+ggplot(aes(x=homeTeam, y=games), data=homegames_by_team) + 
+  geom_bar(stat='identity')
 ```
 
 Now lets check the quality of the data on a between different sets. The games played correlates fairly well with the number of records in the database, except for players with a lot of games played (who debuted before 2001), and players who have 0 recorded games. 
@@ -162,10 +185,18 @@ To kickstart the investigation into relationships between variables, multiple sc
 
 (Note: high-res versions of these plots are included in the repo)
 ```{r echo=FALSE, bivariate_Plots}
-ggpairs(select(agg20, goals, behinds, handballs, kicks, marks, tackles, heightInCm, weightInKg, games), alpha=0.5)
-ggpairs(select(agg20, goals, marksInside50, inside50s, kicks, marks, heightInCm, weightInKg, games), alpha=0.5)
-ggpairs(select(agg20, kicks, marks, tackles, freesFor, freesAgainst, clearances_totalClearances, hitouts, heightInCm, weightInKg, games), alpha=0.5)
-ggpairs(select(agg20, goals, kicks, tackles, heightInCm, weightInKg, position), alpha=0.5)
+ggpairs(select(agg20, goals, behinds, handballs, kicks, marks,
+               tackles, heightInCm, weightInKg, games), alpha=0.5)
+
+ggpairs(select(agg20, goals, marksInside50, inside50s, kicks,
+               marks, heightInCm, weightInKg, games), alpha=0.5)
+
+ggpairs(select(agg20, kicks, marks, tackles, freesFor, freesAgainst,
+               clearances_totalClearances, hitouts, heightInCm,
+               weightInKg, games), alpha=0.5)
+
+ggpairs(select(agg20, goals, kicks, tackles, heightInCm,
+               weightInKg, position), alpha=0.5)
 ```
 
 When we look closer at the relationship between free kicks for and against individual players, we notice that although it balances out for most players, there is still a handful of 'dirty' players who concede 2-4 times the number of free kicks as they receive.
@@ -209,7 +240,8 @@ goal_temp <- select(pms, goals, behinds, playerId) %>%
   merge(select(psum, playerId, position)) %>%
   subset(shot_count>50)
 
-p1 <- ggplot(aes(x=goals, y=behinds), data=goal_temp) + geom_point() + geom_smooth()
+p1 <- ggplot(aes(x=goals, y=behinds), data=goal_temp) + 
+  geom_point() + geom_smooth()
 p2 <- qplot(x=accuracy, data=goal_temp)
 p3 <- qplot(x=position, y=goals, data=goal_temp, geom='boxplot')
 p4 <- qplot(x=position, y=accuracy, data=goal_temp, geom='boxplot')
@@ -220,13 +252,15 @@ grid.arrange(p1, p2, p3, p4, ncol=2)
 
 When we colour the scatter plot by position, we see that forwards and half-forwards dominate the high-scoring section of the plot, as expected.
 ```{r, goals_coloured}
-ggplot(aes(x=goals, y=behinds), data=goal_temp) + geom_point(aes(color=position))
+ggplot(aes(x=goals, y=behinds), data=goal_temp) + 
+  geom_point(aes(color=position))
 ```
 
 Finally, lets look at the change in the game over time. By plotting movement in certain statistics over time by team, and as an aggregate, we can observe certain patters. For instance, the number of kicks per player per match has increased only slightly over time, although there have been periods where Collingwood (COLL) have played a high-kicking game (2006-2011). However number of handballs increased significantly over the course of the decade, a trend initially started by West Coast (WCE) in 2006-7, but practiced heavily by Geelong (GEEL) through 2007-2010. However the trend has reversed and stabilised in recent years.
 
 ```{r, time_series_df}
-my_df <- select(pms, year, gameFloat, teamAbbr, handballs, kicks, tackles, clearances_totalClearances) %>%
+my_df <- select(pms, year, gameFloat, teamAbbr, handballs,
+                kicks, tackles, clearances_totalClearances) %>%
   group_by(year, gameFloat, teamAbbr) %>%
   summarise_each(funs(mean)) %>%
   ungroup()
