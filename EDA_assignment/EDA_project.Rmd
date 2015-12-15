@@ -146,7 +146,7 @@ grid.arrange(p1, p2, nrow=1)
 ```
 
 
-Now visualise the distributions of different game statistics, for instance kicks and handballs. These both appear to be similarly distributed; the distribution appears to be similar to log-normal or weibull. Most players appear to have more kicks than handballs.
+Now visualise the distributions of different game statistics, for instance kicks and handballs. These both appear to be similarly distributed; the distribution appears to be similar to log-normal or weibull. Most players appear to have more kicks (median=`r median(pms$kicks)`) than handballs (median=`r median(pms$handballs)`).
 ```{r echo=FALSE, message=FALSE, warning=FALSE, kicks_handballs}
 p1 <- qplot(x=kicks, data=pms, binwidth=1)
 p2 <- qplot(x=handballs, data=pms, binwidth=1)
@@ -165,13 +165,17 @@ Hitouts are a unique part of the game, where the ball is bounced or thrown up by
 qplot(x=hitouts, data=pms, binwidth=1) + scale_y_log10(limits=c(1,3e5))
 ```
 
-Finally we can look at how the aggregate statistics compare to the individual game statistics. As expected, there is a reversion towards the mean due to large number theory.
+The long tail for hitouts is evident when you look at the quantiles associated with the parameter:
+```{r, hitouts_quantiles}
+quantile(pms$hitouts, c(0.80,0.9,0.95,0.99, 0.999))
+```
+
+Finally we can look at how the aggregate statistics compare to the individual game statistics. As expected, there is a reversion towards the mean due to large number theory. There is a median of `r median(pms$kicks)` per player per game across the entire dataset, but this drops down to a median of `r median(agg20$kicks)` kicks per game for each player when their career is taken in aggregate.
 ```{r echo=FALSE, message=FALSE, warning=FALSE, aggregate_stats}
 p1 <- qplot(x=kicks, data=agg20, binwidth=1) + xlim(0,30)
 p2 <- qplot(x=kicks, data=pms, binwidth=1) + xlim(0,30)
 grid.arrange(p1, p2, nrow=2)
 ```
-
 
 # Univariate Analysis
 
@@ -196,22 +200,40 @@ A new aggregated dataset was constructed to reduce the volume of data, and to be
 # Bivariate Plots Section
 
 To kickstart the investigation into relationships between variables, multiple scatterplot matrices were built between various combinations of variables. 
-- Tackles and clearances (0.65), probably because players who play 'on the ball' are heavily involved in closer scuffles in the game, hence will rack up both stats.
 
 (Note: high-res versions of these plots are included in the repo)
-```{r echo=FALSE, message=FALSE, warning=FALSE, bivariate_Plots}
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=10, bivariate_Plots}
+theme_set(theme_bw(10))
 ggpairs(select(agg20, goals, behinds, handballs, kicks, marks,
-               tackles, heightInCm, weightInKg, games), alpha=0.5)
+               tackles, heightInCm, weightInKg, games),
+        upper=list(params=list(size=5)), alpha=0.1) +
+  theme(axis.line=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank())
 
 ggpairs(select(agg20, goals, marksInside50, inside50s, kicks,
-               marks, heightInCm, weightInKg, games), alpha=0.5)
+               marks, heightInCm, weightInKg, games),
+        upper=list(params=list(size=5)), alpha=0.1) +
+  theme(axis.line=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank())
 
 ggpairs(select(agg20, kicks, marks, tackles, freesFor, freesAgainst,
                clearances_totalClearances, hitouts, heightInCm,
-               weightInKg, games), alpha=0.5)
+               weightInKg, games),
+        upper=list(params=list(size=5)), alpha=0.1) +
+  theme(axis.line=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank())
 
 ggpairs(select(agg20, goals, kicks, tackles, heightInCm,
-               weightInKg, position), alpha=0.5)
+               weightInKg, position),
+        upper=list(params=list(size=5)), alpha=0.1) +
+  theme(axis.line=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank())
+
+
 ```
 
 When we start looking at highly correlated values, we see some pairs which we would probably expect to be well correlated, e.g. goals and behinds (`r with(agg20, mycor(goals, behinds))`) and marks inside 50m with goals (`r with(agg20, mycor(goals, marksInside50))`). This is probably expected, as expected given players who take shots on goal more often will kick more behinds. Additionally, marks inside 50m are also highly correlated to goals, since taking a mark inside 50m gives you a clear shot on goal from where the mark was taken.
@@ -226,6 +248,11 @@ One interesting relation to look at is the free kicks a player receives or conce
 p1 <- qplot(x=freesFor, y=freesAgainst, data=agg20)
 p2 <- qplot(x=freesAgainst/freesFor, data=agg20)
 grid.arrange(p1, p2, ncol=2)
+```
+
+There's a moderately strong correlation seen between tackles and clearances (`r with(agg20, mycor(tackles, clearances_totalClearances))`), probably because players who play 'on the ball' are heavily involved in closer scuffles in the game, hence will rack up both stats.
+```{r echo=FALSE, message=FALSE, warning=FALSE, tackles_clearances}
+qplot(x=tackles, y=clearances_totalClearances, data=agg20) + geom_smooth()
 ```
 
 Hitouts were moderately strongly correlated with height in the previous scatter matrices. However, if we filter on players who are frequently involved in hitouts, i.e. play in that role, by filtering for average hitouts greater than 5, we find that the correlation is less strong. Specifically, after applying the filter the correlation coefficient has dropped from 0.594 to 0.439. Clearly height is only a component in performing well in this role, skill and jump height probably also play an important role. 
