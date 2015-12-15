@@ -97,7 +97,8 @@ homegames_by_team <- group_by(md, homeTeam) %>%
   summarise(games = n()) %>%
   arrange(-games)
 ggplot(aes(x=homeTeam, y=games), data=homegames_by_team) + 
-  geom_bar(stat='identity')
+  geom_bar(stat='identity') + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
 ```
 
 Now lets check the quality of the data on a between different sets. The games played correlates fairly well with the number of records in the database, except for players with a lot of games played (who debuted before 2001), and players who have 0 recorded games. 
@@ -178,10 +179,8 @@ A new aggregated dataset was constructed to reduce the volume of data, and to be
 
 # Bivariate Plots Section
 
-To kickstart the investigation into relationships between variables, multiple scatterplot matrices were built between various combinations of variables. Some variables that are expected to correlate well do, e.g. goals and behinds (0.93), height and weight (0.85) and marks inside 50m with goals (0.93). However the more interesting combinations are:
+To kickstart the investigation into relationships between variables, multiple scatterplot matrices were built between various combinations of variables. 
 - Tackles and clearances (0.65), probably because players who play 'on the ball' are heavily involved in closer scuffles in the game, hence will rack up both stats.
-- Frees kicks for and against are correlated with 0.47, which indicates that the free kicks paid for and against most players balance out.
-- There is a weak negative correlation between height and kicks (-0.41), although perhaps this is more related to the role that players have on the ground, rather than anything to do with their skill at kicking.
 
 (Note: high-res versions of these plots are included in the repo)
 ```{r echo=FALSE, message=FALSE, warning=FALSE, bivariate_Plots}
@@ -199,7 +198,14 @@ ggpairs(select(agg20, goals, kicks, tackles, heightInCm,
                weightInKg, position), alpha=0.5)
 ```
 
-When we look closer at the relationship between free kicks for and against individual players, we notice that although it balances out for most players, there is still a handful of 'dirty' players who concede 2-4 times the number of free kicks as they receive.
+When we start looking at highly correlated values, we see some pairs which we would probably expect to be well correlated, e.g. goals and behinds (0.93) and marks inside 50m with goals (0.93). This is probably expected, as expected given players who take shots on goal more often will kick more behinds. Additionally, marks inside 50m are also highly correlated to goals, since taking a mark inside 50m gives you a clear shot on goal from where the mark was taken.
+```{r echo=FALSE, message=FALSE, warning=FALSE, goals_behinds_marks}
+p1 <- qplot(x=behinds, y=goals, data=agg20) + geom_smooth()
+p2 <- qplot(x=marksInside50, y=goals, data=agg20) + geom_smooth()
+grid.arrange(p1, p2, ncol=1)
+```
+
+One interesting relation to look at is the free kicks a player receives or concedes, which occurs typically for 'foul' play. When we look at the relationship between free kicks for and against individual players we can see a moderate correlation of 0.47. We notice that although it balances out for most players, there is still a handful of 'dirty' players who concede 2-4 times the number of free kicks as they receive.
 ```{r echo=FALSE, message=FALSE, warning=FALSE, free_kicks}
 p1 <- qplot(x=freesFor, y=freesAgainst, data=agg20)
 p2 <- qplot(x=freesAgainst/freesFor, data=agg20)
@@ -211,6 +217,12 @@ Finally, hitouts were moderately strongly correlated with height in the previous
 hitout_df = subset(agg20, hitouts>5)
 qplot(x=heightInCm, y=hitouts, data=hitout_df, geom='jitter')
 cor.test(hitout_df$heightInCm, hitout_df$hitouts)
+```
+
+There is a weak negative correlation between height and kicks (`r cor(agg20$heightInCm, agg20$kicks)`), although perhaps this is more related to the role that players have on the ground, rather than anything to do with their skill at kicking.
+```{r echo=FALSE, message=FALSE, warning=FALSE, height_kicks}
+qplot(x=heightInCm, y=kicks, data=agg20, geom='jitter')
+c = cor.test(agg20$heightInCm, agg20$kicks)
 ```
 
 # Bivariate Analysis
@@ -252,8 +264,9 @@ grid.arrange(p1, p2, p3, p4, ncol=2)
 
 When we colour the scatter plot by position, we see that forwards and half-forwards dominate the high-scoring section of the plot, as expected.
 ```{r echo=FALSE, message=FALSE, warning=FALSE, goals_coloured}
-ggplot(aes(x=goals, y=behinds), data=goal_temp) + 
-  geom_point(aes(color=position))
+ggplot(aes(x=goals, y=behinds, color=position), data=goal_temp) + 
+  geom_point(alpha=0.4) + 
+  geom_smooth(method=lm, se=FALSE)
 ```
 
 Finally, lets look at the change in the game over time. By plotting movement in certain statistics over time by team, and as an aggregate, we can observe certain patters. For instance, the number of kicks per player per match has increased only slightly over time, although there have been periods where Collingwood (COLL) have played a high-kicking game (2006-2011). However number of handballs increased significantly over the course of the decade, a trend initially started by West Coast (WCE) in 2006-7, but practiced heavily by Geelong (GEEL) through 2007-2010. However the trend has reversed and stabilised in recent years.
@@ -276,8 +289,20 @@ p2 <- ggplot(aes(x=year, y=handballs), data=my_df) +
 grid.arrange(p1, p2, ncol=1)
 ```
 
-Throughout the decade there has been a lot of talk about 'congested' football, with many players close to the ball with great intensity. This can be seen in the tackle count rising steadily throughout the decade from 2001-2011. Sydney (SYD) have been known throughout this period for playing tight, congested football, which is seen with them leading the league in tackle count frequently throughout this period. Additionally, Sydney prominently led clearances (getting the ball out from a congested zone) throughout much of the decade too, especially in 2005 - 2013, where they were typically high above league averages.
 ```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_2}
+p1 <- ggplot(aes(x=year, y=kicks), data=my_df) +
+  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
+  geom_smooth(aes(x=gameFloat-0.5), color='black')
+p2 <- ggplot(aes(x=year, y=handballs), data=my_df) + 
+  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
+  geom_smooth(aes(x=gameFloat-0.5), color='black') +
+  geom_line(data=subset(my_df, teamAbbr=="GEEL"), color='red')
+grid.arrange(p1, p2, ncol=1)
+```
+
+
+Throughout the decade there has been a lot of talk about 'congested' football, with many players close to the ball with great intensity. This can be seen in the tackle count rising steadily throughout the decade from 2001-2011. Sydney (SYD) have been known throughout this period for playing tight, congested football, which is seen with them leading the league in tackle count frequently throughout this period. Additionally, Sydney prominently led clearances (getting the ball out from a congested zone) throughout much of the decade too, especially in 2005 - 2013, where they were typically high above league averages.
+```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_3}
 p1 <- ggplot(aes(x=year, y=tackles), data=my_df) +
   geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") + 
   geom_smooth(aes(x=gameFloat-0.5), color='black')
@@ -324,5 +349,6 @@ Todo
 ### Description Three
 
 ------
+
 
 # Reflection
