@@ -305,14 +305,17 @@ median(with(subset(goal_temp, position != "Forward"), median(accuracy)))
 grid.arrange(p1, p2, p3, p4, ncol=2)
 ```
 
-When we colour the scatter plot by position, we see that forwards and half-forwards dominate the high-scoring section of the plot, as expected.
+When we colour the scatter plot by position, we see that forwards and half-forwards dominate the high-scoring section of the plot, as expected. Additionally, we can note how the linear regressions for different positions fall into two clusters, one for forward positions and another for the rest.
 ```{r echo=FALSE, message=FALSE, warning=FALSE, goals_coloured}
-ggplot(aes(x=goals, y=behinds, color=position), data=goal_temp) + 
+ggplot(aes(x=behinds, y=goals, color=position), data=goal_temp) + 
   geom_point(alpha=0.4) + 
-  geom_smooth(method=lm, se=FALSE)
+  geom_smooth(method=lm, formula=y ~ x+0, se=FALSE) #linear fit with forced 0
+                                                    #intercept seems cleaner
 ```
 
-Finally, lets look at the change in the game over time. By plotting movement in certain statistics over time by team, and as an aggregate, we can observe certain patters. For instance, the number of kicks per player per match has increased only slightly over time, although there have been periods where Collingwood (COLL) have played a high-kicking game (2006-2011). However number of handballs increased significantly over the course of the decade, a trend initially started by West Coast (WCE) in 2006-7, but practiced heavily by Geelong (GEEL) through 2007-2010. However the trend has reversed and stabilised in recent years.
+Finally, lets look at the change in the game over time. By plotting movement in certain statistics over time by team, and as an aggregate, we can observe certain patters. The following plot shows the timeseries trends for kicks and handballs over time, with a black line for league average, grey lines for each team. Additionally, three teams have been highlighted: Collingwood and Geelong, who were strong through the middle of the last decade, and Hawthorn, who are becoming increasingly dominant in the 2010s.
+
+We see that the number of kicks per player per match has increased only slightly over time, although there have been periods where Collingwood (COLL) have played a high-kicking game (2006-2011), but with comparatively few handballs compared with competitors. In general the number of handballs increased significantly over the course of the decade, something practiced heavily by Geelong (GEEL) through 2007-2010, although the trend has receded and stabilised in recent years. Hawthorn appear to be playing a game more similar to the 'Collingwood model' more recently, with a high-kicking game.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_df}
 my_df <- select(pms, year, gameFloat, teamAbbr, handballs,
@@ -323,35 +326,59 @@ my_df <- select(pms, year, gameFloat, teamAbbr, handballs,
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_1}
-p1 <- ggplot(aes(x=year, y=kicks), data=my_df) +
-  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
-  geom_smooth(aes(x=gameFloat-0.5), color='black')
-p2 <- ggplot(aes(x=year, y=handballs), data=my_df) + 
-  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
-  geom_smooth(aes(x=gameFloat-0.5), color='black')
-grid.arrange(p1, p2, ncol=1)
-```
+myspan <- 0.67
+p1 <- ggplot(aes(x=gameFloat, y=kicks), data=my_df) + 
+  # Plot one grey line for each team
+  geom_smooth(aes(group=teamAbbr), alpha=0.3, color='grey',
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Pick out three teams
+  geom_smooth(aes(color=teamAbbr), 
+              data=subset(my_df, teamAbbr %in% c("GEEL", "COLL", "HAW")), 
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Add league average
+  geom_smooth(color='black', method=loess, span=myspan, n=200)
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_2}
-p1 <- ggplot(aes(x=year, y=kicks), data=my_df) +
-  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
-  geom_smooth(aes(x=gameFloat-0.5), color='black')
-p2 <- ggplot(aes(x=year, y=handballs), data=my_df) + 
-  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") +
-  geom_smooth(aes(x=gameFloat-0.5), color='black') +
-  geom_line(data=subset(my_df, teamAbbr=="GEEL"), color='red')
-grid.arrange(p1, p2, ncol=1)
-```
+p2 <- ggplot(aes(x=gameFloat, y=handballs), data=my_df) + 
+  # Plot one grey line for each team
+  geom_smooth(aes(group=teamAbbr), alpha=0.3, color='grey',
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Pick out three teams
+  geom_smooth(aes(color=teamAbbr), 
+              data=subset(my_df, teamAbbr %in% c("GEEL", "COLL", "HAW")), 
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Add league average
+  geom_smooth(color='black', method=loess, span=myspan, n=200)
 
+grid.arrange(p1, p2, ncol=1)
+
+```
 
 Throughout the decade there has been a lot of talk about 'congested' football, with many players close to the ball with great intensity. This can be seen in the tackle count rising steadily throughout the decade from 2001-2011. Sydney (SYD) have been known throughout this period for playing tight, congested football, which is seen with them leading the league in tackle count frequently throughout this period. Additionally, Sydney prominently led clearances (getting the ball out from a congested zone) throughout much of the decade too, especially in 2005 - 2013, where they were typically high above league averages.
-```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_3}
-p1 <- ggplot(aes(x=year, y=tackles), data=my_df) +
-  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") + 
-  geom_smooth(aes(x=gameFloat-0.5), color='black')
-p2 <- ggplot(aes(x=year, y=clearances_totalClearances), data=my_df) + 
-  geom_line(aes(color=teamAbbr), stat="summary", fun.y="mean") + 
-  geom_smooth(aes(x=gameFloat-0.5), color='black')
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, time_series_2}
+myspan <- 0.67
+p1 <- ggplot(aes(x=gameFloat, y=tackles), data=my_df) + 
+  # Plot one grey line for each team
+  geom_smooth(aes(group=teamAbbr), alpha=0.3, color='grey',
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Pick out three teams
+  geom_smooth(aes(color=teamAbbr), 
+              data=subset(my_df, teamAbbr %in% c("SYD")), 
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Add league average
+  geom_smooth(color='black', method=loess, span=myspan, n=200)
+
+p2 <- ggplot(aes(x=gameFloat, y=clearances_totalClearances), data=my_df) + 
+  # Plot one grey line for each team
+  geom_smooth(aes(group=teamAbbr), alpha=0.3, color='grey',
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Pick out three teams
+  geom_smooth(aes(color=teamAbbr), 
+              data=subset(my_df, teamAbbr %in% c("SYD")), 
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Add league average
+  geom_smooth(color='black', method=loess, span=myspan, n=200)
+
 grid.arrange(p1, p2, ncol=1)
 ```
 
