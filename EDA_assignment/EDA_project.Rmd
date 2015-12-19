@@ -152,6 +152,7 @@ grid.arrange(p1, p2, nrow=1)
 
 
 Now visualise the distributions of different game statistics, for instance kicks and handballs. These both appear to be similarly distributed; the distribution appears to be similar to log-normal or weibull. Most players appear to have more kicks (median=`r median(pms$kicks)`) than handballs (median=`r median(pms$handballs)`).
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE, kicks_handballs}
 p1 <- qplot(x=kicks, data=pms, binwidth=1)
 p2 <- qplot(x=handballs, data=pms, binwidth=1)
@@ -294,6 +295,14 @@ Goals and behinds, marks inside 50m and goals. These relationships are unsurpris
 
 # Multivariate Plots Section
 
+First we'll look at the physical characteristic of players in different positions. The scatterplots below include an extra contour at 50% density to give a better representation of where each position tends to be. What we see is that rucks form a definite cluster as the taller players. Also half-forwards have quite a spread, that tends to go spread taller that other positions. Aside from these and the 'other' category, most players tend to be clustered around the same area, slightly higher than the general population average male height of 177cm.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, weight_height_position}
+ggplot(aes(x=weightInKg, y=heightInCm, color=position), data=agg20) + 
+  geom_jitter(alpha=0.25) +
+  geom_density2d(bins=2, size=0.8)
+```
+
 Lets take a look at the accuracy of players in kicking goals. In AFL, there are four posts to kick at, the inner goal posts, which will score 6 points, and the outer behind posts, which only score 1 point. The accuracy of a player kicking for goal is the number of goals, divided by shots on goal (i.e. goals+behinds). The accuracy has been evaluated for all players with at least 50 shots on goal, and this has been further subdivided for goals by position and the accuracy of players in each position. Surprisingly, median forwards only seem to be marginally more accurate than non-forwards: median 60% vs 57.8%. However, the long, high tail of the box plot suggests that the best forward are very accurate; over 75%.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, goal_accuracy}
@@ -309,10 +318,12 @@ goal_temp <- select(pms, goals, behinds, playerId) %>%
   subset(shot_count>50)
 
 p1 <- ggplot(aes(x=goals, y=behinds), data=goal_temp) + 
-  geom_point() + geom_smooth()
-p2 <- qplot(x=accuracy, data=goal_temp)
-p3 <- qplot(x=position, y=goals, data=goal_temp, geom='boxplot')
-p4 <- qplot(x=position, y=accuracy, data=goal_temp, geom='boxplot')
+  geom_point(alpha=0.3) + geom_smooth()
+p2 <- qplot(x=accuracy, data=goal_temp, binwidth=0.01)
+p3 <- qplot(x=position, y=goals, data=goal_temp, geom='boxplot') + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
+p4 <- qplot(x=position, y=accuracy, data=goal_temp, geom='boxplot') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
 group_by(goal_temp, position) %>% summarise(median(accuracy))
 median(with(subset(goal_temp, position != "Forward"), median(accuracy)))
 grid.arrange(p1, p2, p3, p4, ncol=2)
@@ -407,27 +418,51 @@ Discussed above.
 
 # Final Plots and Summary
 
-Todo
-
 ### Plot One
 ```{r echo=FALSE, Plot_One}
-#TODO
+ggplot(aes(x=weightInKg, y=heightInCm, color=position), data=agg20) + 
+  geom_jitter(alpha=0.4) +
+  geom_density2d(bins=2, size=0.8) + 
+  xlab('Player Weight (kg)') +
+  ylab('Player Height (cm)') +
+  ggtitle('Player Position vs. Weight and Height')
 ```
 
 ### Description One
 
+The first plot illustrates the physical characteristics of players in different positions. The player position that most stands out is Ruck, who tend to be taller. Additionally, half-forwards and 'other' appear to have a moderate share of taller players, although there is no trend for taller players for forwards, who are curiously the shortest of players. There is no real difference in player weight between different positions; in general all players follow the same weight vs. height trend.
 
 ### Plot Two
 ```{r echo=FALSE, Plot_Two}
-#TODO
+qplot(x=position, y=accuracy, data=goal_temp, geom='boxplot') +
+  xlab('Player Position') +
+  ylab('Goal Kicking Accuracy') +
+  ggtitle('Player Accuracy vs Position\n(more than 20 games played)')
 ```
 
 ### Description Two
 
+The second plot shows the accuracy of players accross various positions. Surprisingly, despite playing a role which requires frequently kicking for goal, Forwards and Half-Forwards are only slightly more accurate than other players, median 60% vs 57.8%. However, the long, high tail of the box plot suggests that the best forwards and half forwards are very accurate; over 75%.
 
 ### Plot Three
 ```{r echo=FALSE, Plot_Three}
-#TODO
+myspan <- 0.67
+# Note handballs are in the database as handballs per player for each game
+# The handball count is multiplied by 22 (players per side in a game) to get
+# the number of handballs per team over time.
+ggplot(aes(x=gameFloat, y=handballs*22), data=my_df) + 
+  # Plot one grey line for each team
+  geom_smooth(aes(group=teamAbbr), alpha=0.3, color='grey',
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Pick out three teams
+  geom_smooth(aes(color=teamAbbr), 
+              data=subset(my_df, teamAbbr %in% c("GEEL", "COLL", "HAW")), 
+              se=FALSE, method=loess, span=myspan, n=200) +
+  # Add league average
+  geom_smooth(color='black', method=loess, span=myspan, n=200) +
+  xlab('Year') +
+  ylab('Team Handballs per Game') +
+  ggtitle('Evolution of the Handball in AFL, 2001-2015')
 ```
 
 ### Description Three
