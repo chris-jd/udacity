@@ -1,7 +1,8 @@
 ---
 title: "Australian Football Stats EDA"
+revision: "B"
 author: "Chris Madeley"
-date: "23 November 2015"
+date: "19 December 2015"
 output: html_document
 ---
 
@@ -456,7 +457,7 @@ ggplot(aes(x=gameFloat, y=handballs*22), data=my_df) +
               se=FALSE, method=loess, span=myspan, n=200) +
   # Pick out three teams
   geom_smooth(aes(color=teamAbbr), 
-              data=subset(my_df, teamAbbr %in% c("GEEL", "COLL", "HAW")), 
+              data=subset(my_df, teamAbbr %in% c("GEEL", "COLL")), 
               se=FALSE, method=loess, span=myspan, n=200) +
   # Add league average
   geom_smooth(color='black', method=loess, span=myspan, n=200) +
@@ -467,7 +468,17 @@ ggplot(aes(x=gameFloat, y=handballs*22), data=my_df) +
 
 ### Description Three
 
+The plot is interesting as it illustrates two interesting qualities. The first is a change in the way the game is played over the last 15 years, with a significant increase in the number of handballs used by all teams over the period 2003-2008. Additionally, it shows a massive outlier in the usage of the handball by Geelong, one of the strongest teams in this period, which possibly drove the change in the game. However another strong team in this period, Collingwood, trailed the league in the use of the handball; they had a game more oriented around kicking.
+
 ------
 
-
 # Reflection
+
+This analysis started to uncover some interesting characteristics in the broad dataset that has been collected from AFL statistics. In general it appears that the dataset that has been constructed is reasonalbly well formatted and does not have significant problems, although certain statistics have only been collected in more recent years.
+
+The raw data collected for the project was quite broad, one dataframe was 126876 rows by 41 variables. Additionally, some parameters of interest (e.g. player characteristics) required merging data from other datasources (which existed in seperate dataframes). To handle the numerous possibilities in analysis, many of the analyses have been based around aggregate statistcs. Consequently it can be argued that by reducing the data in such a manner that a lot of useful information may be lost. However these aggregations seemed necessary given the scope of the project.
+
+Such a detailed and broad dataset invites itself for extensive further analysis. Of particular interest may involve the career evolution of individual players over time. This analysis could look at questions as to whether there are any early indicators of future success in player's statistics near the beginning of their career, which would help list managers to decide which players are more likely to come good over time. This type of analysis would lend itself to statistical testing, and the construction of machine learning models.
+
+Furthermore, no work was done in this exploratory analysis to relate team statistics and player statistics and to team outcomes, i.e. wins and losses. Given the ultimate objective of football is to win games, it would be interesting to see what factors most contribute to winning. In a similar vein, it would answer questions like 'do the best 5 players or worst 5 players on a team mean the most in the context of winning or losing?'. Given AFL teams are constructed within a salary cap, this information would be useful when deciding to spend a large portion of the cap on a few superstars, or whether to seek a highly balanced list.
+
