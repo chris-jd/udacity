@@ -109,6 +109,8 @@ agg <- select(pms, playerId, behinds, bounces, clangers,
 agg20 <- subset(agg, games>20)
 ```
 
+In general the purpose of this investigation is to look at the relationship between player's 'properties'; weight, height and playing position; and their playing statistics. Furthermore, general trends in the game will also be explored as they arise.
+
 ## Data Quality
 Looking at whether the data is well formed, we can investigate the number of home games by team. We observe low counts for two teams, GCFC and GWS, who only joined the competition 2-3 years ago. There also appear to be some games with missing labels. On closer inspection, these 49 games are missing all details, and occur inconsistently across the period 2001 to 2011. 
 
@@ -283,13 +285,25 @@ qplot(x=heightInCm, y=kicks, data=agg20, geom='jitter')
 c = cor.test(agg20$heightInCm, agg20$kicks)
 ```
 
+Part of this may be explained by Rucks, who are typically the tallest players, having fewer disposals (i.e. kicks+handballs) in general.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, disposals_per_position}
+ggplot(aes(x=disposals, color=position), data=agg20) +
+  geom_density(aes(fill=position), alpha=0.05)
+```
+
+
 # Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
-Described above.
+Two of the most interesting relationships are between player statistics vs height. 
+
+Firstly, the once entries are filtered for players with regular hitouts, there is only a weak correlation between height and hitouts. Clearly technique and ability is as important as height for being able to reach the ball for a hitout.
+
+Secondly, the negative correlation between height and kicks was curious. It's not clear if this is due to taller players having different roles within the team or not.
 
 ### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
-Described above.
+The relationships between frees for and against individual players was quite interesting. There are clearly a handful of outliers who have a lot of free kicks called against them, who may be characterised as 'dirty' players. 
 
 ### What was the strongest relationship you found?
 Goals and behinds, marks inside 50m and goals. These relationships are unsurprising, given a mark inside 50m leads to a shot on goal, and behinds happen when you miss the goal.
@@ -325,9 +339,9 @@ p3 <- qplot(x=position, y=goals, data=goal_temp, geom='boxplot') +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
 p4 <- qplot(x=position, y=accuracy, data=goal_temp, geom='boxplot') +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))
+grid.arrange(p1, p2, p3, p4, ncol=2)
 group_by(goal_temp, position) %>% summarise(median(accuracy))
 median(with(subset(goal_temp, position != "Forward"), median(accuracy)))
-grid.arrange(p1, p2, p3, p4, ncol=2)
 ```
 
 When we colour the scatter plot by position, we see that forwards and half-forwards dominate the high-scoring section of the plot, as expected. Additionally, we can note how the linear regressions for different positions fall into two clusters, one for forward positions and another for the rest.
@@ -337,6 +351,23 @@ ggplot(aes(x=behinds, y=goals, color=position), data=goal_temp) +
   geom_point(alpha=0.4) + 
   geom_smooth(method=lm, formula=y ~ x+0, se=FALSE) #linear fit with forced 0
                                                     #intercept seems cleaner
+```
+
+To revisit the question of why taller players have fewer disposals, we can color by position to see if the position plays a role in the relationship. What we find is that the rucks, who are the tallest players, have fewer kicks. However nearly all the subgroups also appear to have weak to moderate negative correlations too, so it's not all attributable to position.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, kicks_v_height_v_pos}
+qplot(x=heightInCm, y=kicks, color=position, data=agg20,
+      geom='jitter', alpha=0.2) +
+  geom_density2d(bins=2, size=0.8, alpha=1)
+group_by(agg20, position) %>% summarise(cor(heightInCm, kicks))
+```
+
+If we explore this a little further, by looking at the preference of kicks and handballs for players of different positions, we definitely see that rucks are unique in their preference for handballs over kicks.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, kicks_v_handballs_v_pos}
+qplot(x=kicks, y=handballs, color=position, data=agg20,
+      geom='jitter', alpha=0.2) +
+  geom_density2d(bins=2, size=0.8, alpha=1)
 ```
 
 Finally, lets look at the change in the game over time. By plotting movement in certain statistics over time by team, and as an aggregate, we can observe certain patters. The following plot shows the timeseries trends for kicks and handballs over time, with a black line for league average, grey lines for each team. Additionally, three teams have been highlighted: Collingwood and Geelong, who were strong through the middle of the last decade, and Hawthorn, who are becoming increasingly dominant in the 2010s.
@@ -411,11 +442,13 @@ grid.arrange(p1, p2, ncol=1)
 # Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
-Discussed above.
+
+The only position who showed a clear characteristic weight and height were the rucks, who are definitely the tallest players. However many positions were of a similar height and weight, and there was no trend for certain positions being heavier or lighter relative to their weight.
+
+Splitting height vs kicks against position helped explain that part of the difference may be due to taller players being Rucks, and also kicking less. However, curiously, every single position had a negative correlation between height and kicks, for which I have no obvious explanation.
 
 ### Were there any interesting or surprising interactions between features?
-Discussed above.
-
+The most interesting relationship found was the only marginal improvement in kicking accuracy of players playing in forward positions, compared to players in other positions. 
 
 # Final Plots and Summary
 
